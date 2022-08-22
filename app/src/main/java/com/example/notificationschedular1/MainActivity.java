@@ -1,16 +1,16 @@
-package com.example.notificationschedular;
+package com.example.notificationschedular1;
 
-import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.app.job.JobInfo;
 import android.app.job.JobScheduler;
 import android.content.ComponentName;
-import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.RadioGroup;
+import android.widget.SeekBar;
 import android.widget.Switch;
+import android.widget.TextView;
 import android.widget.Toast;
 
 public class MainActivity extends AppCompatActivity {
@@ -19,6 +19,7 @@ public class MainActivity extends AppCompatActivity {
     private JobScheduler jobScheduler;
     private Switch deviceCharging;                       // object for chargingSwitch
     private Switch deviceIdle;                              // object for IdleSwitch
+    private SeekBar seekBar;
     private static final int JOB_ID = 0;
 
     @Override
@@ -31,6 +32,33 @@ public class MainActivity extends AppCompatActivity {
         // initialise the switches
         deviceCharging = findViewById(R.id.chargigSwitch);
         deviceIdle = findViewById(R.id.idleSwitch);
+
+        // to show the time after which the operation will performed guarantee
+        final TextView updateDeadlineTxt = findViewById(R.id.updateDeadlineTxt);
+
+        // get the data from seekBar
+        seekBar = findViewById(R.id.seekBar);
+        seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                // override the text to show the user in how many seconds the operations is done
+                if(progress > 0) {
+                    updateDeadlineTxt.setText(progress + "s");
+                } else {
+                    updateDeadlineTxt.setText("not set");
+                }
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {
+
+            }
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+
+            }
+        });
     }
 
     public void scheduleJob(View view) {
@@ -56,7 +84,6 @@ public class MainActivity extends AppCompatActivity {
             default:
                 selected_network_option = JobInfo.NETWORK_TYPE_NONE;
         }
-
         // get the job scheduler service from the system
         jobScheduler = (JobScheduler) getSystemService(JOB_SCHEDULER_SERVICE);
 
@@ -69,16 +96,27 @@ public class MainActivity extends AppCompatActivity {
         /* Actually here we are only setting the requirements which are
          given by the user to perform an operation  */
         jobInfoBuilder.setRequiredNetworkType(selected_network_option);
-        // set the requirement of idle and charging state
-        // it accept boolean value, if passed parameter is true then it will
-        // run only that requirement is fulfilled otherwise neglect it.
-        jobInfoBuilder.setRequiresDeviceIdle(deviceIdle.isChecked());
+        /* set the requirement of idle and charging state
+           it accept boolean value, if passed parameter is true then it will
+           run only when the requirement is fulfilled otherwise neglect it. */
+        /* remember if plugged-in but the power consumption of device is more than
+           power is passing then the device is in charging state and not let the job done */
+        /* Idle state means that device should not used interactively and has not been use for some time*/
         jobInfoBuilder.setRequiresCharging(deviceCharging.isChecked());
+        jobInfoBuilder.setRequiresDeviceIdle(deviceIdle.isChecked());      // this also h
 
-        // if no options is selected by the user then the operation
-        // should not be perform that's why we are checking that user enabled
-        // any of the switch or not if didn't then request him to enable any of the switch
-        if(deviceCharging.isChecked() || deviceIdle.isChecked()) {
+        // get the information about the seekbar
+        int progress = seekBar.getProgress();    // return the progress in seconds
+        boolean setSeekBar = progress > 0;
+
+        /* the app only perform the operation when the selected choices are satisfied
+           but there is no guarantee that it will satisfy at some point in time and app will perform the defined operation
+           that's why we set here a deadline if conditions don't satisfy then do it after the time is over */
+        jobInfoBuilder.setOverrideDeadline(progress*1000);     // it need the time in milliseconds
+        /* if no options is selected by the user then the operation
+           should not be perform that's why we are checking that user enabled
+           any of the switch or not if didn't then request him to enable any of the switch */
+        if(deviceCharging.isChecked() || deviceIdle.isChecked() || setSeekBar) {
             // this build the JobInfo
             JobInfo jobInfo = jobInfoBuilder.build();
 

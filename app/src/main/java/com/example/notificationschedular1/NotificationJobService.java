@@ -1,4 +1,4 @@
-package com.example.notificationschedular;
+package com.example.notificationschedular1;
 
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
